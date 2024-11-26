@@ -77,7 +77,7 @@ async function fetchBackupLogs(token, startTime, endTime) {
         });
 
         return response.data.operation_logs
-            .filter(log => log.operation_type !== "delete")  // Filter out "delete" logs
+            .filter(log => log.operation_type !== "delete")
             .map(log => {
                 const started = new Date(log.started_at);
                 started.setHours(started.getHours() + 3);
