@@ -1,42 +1,42 @@
-const axios = require('axios');
-const ExcelJS = require('exceljs');
-const nodemailer = require('nodemailer');
+const axios = require("axios");
+const ExcelJS = require("exceljs");
+const nodemailer = require("nodemailer");
 
 async function getToken(username, password, domainName) {
-    const endpoint = 'https://iam.tr-west-1.myhuaweicloud.com/v3/auth/tokens';
+    const endpoint = "https://iam.tr-west-1.myhuaweicloud.com/v3/auth/tokens";
     const requestBody = {
         auth: {
             identity: {
-                methods: ['password'],
+                methods: ["password"],
                 password: {
                     user: {
                         name: username,
                         password: password,
                         domain: {
-                            name: domainName
-                        }
-                    }
-                }
+                            name: domainName,
+                        },
+                    },
+                },
             },
             scope: {
                 project: {
-                    name: process.env.REGION
-                }
-            }
-        }
+                    name: process.env.REGION,
+                },
+            },
+        },
     };
 
     try {
         const response = await axios.post(endpoint, requestBody, {
             headers: {
-                'Content-Type': 'application/json'
-            }
+                "Content-Type": "application/json",
+            },
         });
 
-        return response.headers['x-subject-token'];
+        return response.headers["x-subject-token"];
     } catch (error) {
-        console.error('Failed to obtain token:', error);
-        throw new Error('Token could not be obtained.');
+        console.error("Failed to obtain token:", error);
+        throw new Error("Token could not be obtained.");
     }
 }
 
@@ -55,13 +55,13 @@ function getFormattedTimes() {
     return {
         formattedStartTime: start_time.toISOString().replace(".000Z", "Z"),
         formattedEndTime: end_time.toISOString().replace(".000Z", "Z"),
-        endTimeForFileName: end_time.toISOString().split('T')[0]
+        endTimeForFileName: end_time.toISOString().split("T")[0],
     };
 }
 
 async function fetchBackupLogs(token, startTime, endTime) {
-    const projectId = process.env.PROJECT_ID
-    const region = process.env.REGION
+    const projectId = process.env.PROJECT_ID;
+    const region = process.env.REGION;
     const apiUrl = `https://cbr.${region}.myhuaweicloud.com/v3/${projectId}/operation-logs`;
 
     try {
@@ -77,8 +77,8 @@ async function fetchBackupLogs(token, startTime, endTime) {
         });
 
         return response.data.operation_logs
-            .filter(log => log.operation_type !== "delete")
-            .map(log => {
+            .filter((log) => log.operation_type !== "delete")
+            .map((log) => {
                 const started = new Date(log.started_at);
                 started.setHours(started.getHours() + 3);
 
@@ -98,18 +98,20 @@ async function fetchBackupLogs(token, startTime, endTime) {
                     VaultID: log.vault_id,
                     VaultName: log.vault_name,
                     Started: started.toISOString().replace(".000Z", ""),
-                    Ended: ended ? ended.toISOString().replace(".000Z", "") : null,
+                    Ended: ended
+                        ? ended.toISOString().replace(".000Z", "")
+                        : null,
                 };
             });
     } catch (error) {
-        console.error('Failed to fetch logs:', error);
-        throw new Error('Log fetch failed.');
+        console.error("Failed to fetch logs:", error);
+        throw new Error("Log fetch failed.");
     }
 }
 
 async function createFormattedExcel(logs, filePath) {
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('CBR Logs');
+    const worksheet = workbook.addWorksheet("CBR Logs");
 
     worksheet.columns = [
         { header: "TaskID", key: "TaskID", width: 20 },
@@ -126,22 +128,22 @@ async function createFormattedExcel(logs, filePath) {
     ];
 
     worksheet.getRow(1).eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
         cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF4F81BD' },
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF4F81BD" },
         };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
     });
 
-    logs.forEach(log => {
+    logs.forEach((log) => {
         worksheet.addRow(log);
     });
 
-    worksheet.columns.forEach(column => {
-        if (column.key === 'Started' || column.key === 'Ended') {
-            column.style = { numFmt: 'yyyy-mm-dd hh:mm:ss' };
+    worksheet.columns.forEach((column) => {
+        if (column.key === "Started" || column.key === "Ended") {
+            column.style = { numFmt: "yyyy-mm-dd hh:mm:ss" };
         }
     });
 
@@ -150,35 +152,35 @@ async function createFormattedExcel(logs, filePath) {
 
 async function sendEmailWithReport(filePath, fileName, recipients) {
     const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
+        host: "smtp.gmail.com",
         port: 587,
         secure: false,
         auth: {
-            user: 'fburakbakir@gmail.com',
+            user: "fburakbakir@gmail.com",
             pass: process.env.SMTP_PASS,
         },
     });
 
     const mailOptions = {
-        from: 'fburakbakir@gmail.com',
-        to: recipients.join(','),
+        from: "fburakbakir@gmail.com",
+        to: recipients.join(","),
         subject: fileName,
         text: `Please review the attached daily CBR report for ${fileName}`,
         attachments: [
             {
                 filename: fileName,
                 path: filePath,
-            }
+            },
         ],
     };
 
     try {
         const info = await transporter.sendMail(mailOptions);
-        console.log('Email successfully sent:', info.response);
-        return 'Email successfully sent';
+        console.log("Email successfully sent:", info.response);
+        return "Email successfully sent";
     } catch (error) {
-        console.error('Failed to send email:', error.message);
-        throw new Error('Email send failed');
+        console.error("Failed to send email:", error.message);
+        throw new Error("Email send failed");
     }
 }
 
@@ -189,28 +191,40 @@ exports.handler = async function (event, context, callback) {
         const domainName = context.getUserData("HUAWEI_CLOUD_DOMAIN_NAME");
 
         const token = await getToken(name, password, domainName);
-        const { formattedStartTime, formattedEndTime, endTimeForFileName } = getFormattedTimes();
-        const logs = await fetchBackupLogs(token, formattedStartTime, formattedEndTime);
+        const { formattedStartTime, formattedEndTime, endTimeForFileName } =
+            getFormattedTimes();
+        const logs = await fetchBackupLogs(
+            token,
+            formattedStartTime,
+            formattedEndTime
+        );
 
-        
-        const vaultEmailMap = process.env.VAULT_EMAILS ? JSON.parse(process.env.VAULT_EMAILS) : {};
+        const vaultEmailMap = process.env.VAULT_EMAILS
+            ? JSON.parse(process.env.VAULT_EMAILS)
+            : {};
 
         for (let vaultId in vaultEmailMap) {
-            const filteredLogs = logs.filter(log => log.VaultID === vaultId);
+            const filteredLogs = logs.filter((log) => log.VaultID === vaultId);
             if (filteredLogs.length > 0) {
                 const filePath = `/tmp/Backup_Reports-${vaultId}-(${endTimeForFileName}).xlsx`;
                 await createFormattedExcel(filteredLogs, filePath);
 
-                const emailResponse = await sendEmailWithReport(filePath, `Backup_Reports-${vaultId}-(${endTimeForFileName}).xlsx`, vaultEmailMap[vaultId]);
+                const emailResponse = await sendEmailWithReport(
+                    filePath,
+                    `Backup_Reports-${vaultId}-(${endTimeForFileName}).xlsx`,
+                    vaultEmailMap[vaultId]
+                );
                 console.log(emailResponse);
             }
         }
 
-        callback(null, 'Reports successfully sent');
+        callback(null, "Reports successfully sent");
     } catch (error) {
-        console.error('Operation failed:', error);
+        console.error("Operation failed:", error);
         callback(error);
     }
 };
 
 // Vault id ye gore birden cok mail hesabina mail atabilen script.
+
+{   "73ccd5b7-e619-4af3-be38-431613033c3e": ["iburakbakir@gmail.com", "fburakbakir@gmail.com"],   "7472696c-5a4d-4bcc-8fc8-76ef43460e4b": ["iburakbakir@gmail.com"], "ce95a663-adb9-4249-9591-7925031d3a91": ["fburakbakir@gmail.com"] }

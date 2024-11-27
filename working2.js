@@ -98,7 +98,9 @@ async function fetchBackupLogs(token, startTime, endTime) {
                     VaultID: log.vault_id,
                     VaultName: log.vault_name,
                     Started: started.toISOString().replace(".000Z", ""),
-                    Ended: ended ? ended.toISOString().replace(".000Z", "") : null,
+                    Ended: ended
+                        ? ended.toISOString().replace(".000Z", "")
+                        : null,
                 };
             });
     } catch (error) {
